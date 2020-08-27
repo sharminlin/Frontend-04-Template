@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic Tac Toe</title>
+  <style>
+    .square {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      border: 1px solid #666;
+      line-height: 50px;
+      vertical-align: middle;
+      text-align: center;
+      font-size: 24px;
+      color: pink;
+    }
+  </style>
+</head>
+<body>
+  <div id="board"></div>
+  <script>
+    const el = document.getElementById('board')
+    const matrixOrder = 3 // 矩阵阶级
+    const player = ['', '⭕', '❌']
+    const pattern = [
+      [0, 1, 0],
+      [0, 2, 0],
+      [0, 0, 0]
+    ]
+
+    let currentPlayer = 1
+
+    /**
+     * 渲染棋盘
+     */
+    function render () {
+      el.innerHTML = null // clear
+      for (let row = 0; row < matrixOrder; row++) {
+        for (let col = 0; col < matrixOrder; col++) {
+          const square = document.createElement('span')
+          square.innerText = player[pattern[row][col]]
+          square.classList.add('square')
+          square.addEventListener('click', () => {
+            if (!pattern[row][col]) {
+              pattern[row][col] = currentPlayer
+              square.innerText = player[currentPlayer]
+              if (checkWin(row, col)) {
+                alert(player[currentPlayer] + ' is winner')
+              }
+              currentPlayer = 3 - currentPlayer
+            }
+          })
+          el.appendChild(square)
+        }
+        el.appendChild(document.createElement('br'))
+      }
+    }
+
+    // 根据方向，获取下一步的坐标
+    const coordinateByDirection = {
+      'TOP': (row, col) => [row - 1, col], // 上
+      'BOTTOM': (row, col) => [row + 1, col], // 下
+      'LEFT': (row, col) => [row, col - 1], // 左
+      'RIGHT': (row, col) => [row, col + 1], // 右
+      'LEFT-TOP': (row, col) => [row - 1, col - 1], // 左上
+      'RIGHT-TOP': (row, col) => [row - 1, col + 1], // 右上
+      'LEFT-BOTTOM': (row, col) => [row + 1, col - 1], // 左下
+      'RIGHT-BOTTOM': (row, col) => [row + 1, col + 1] // 右下
+    }
+
+    /**
+     * 判断当前一步是否已胜利
+     */
+    function checkWin (row, col) {
+      // 8个方向深度搜索
+      for (let direction in coordinateByDirection) {
+        if (dfs(...coordinateByDirection[direction](row, col), direction, 1)) {
+          return true
+        }
+      }
+    }
+
+    function dfs (row, col, direction, deep) {
+      // 边界
+      if (row < 0 || row >= matrixOrder) return false
+      if (col < 0 || col >= matrixOrder) return false
+      // 非等
+      if (pattern[row][col] !== currentPlayer) return false
+      // 最大深度时，返回
+      if (deep === 2) {
+        return true
+      }
+
+      return dfs(...coordinateByDirection[direction](row, col), direction, deep + 1)
+    }
+
+    render()
+  </script>
+</body>
+</html>
