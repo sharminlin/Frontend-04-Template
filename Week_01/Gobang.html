@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tic Tac Toe</title>
+  <title>Gobang</title>
   <style>
     .square {
       display: inline-block;
       width: 50px;
       height: 50px;
-      border: 1px solid #666;
+      border: 1px solid rgb(20, 19, 19);
       line-height: 50px;
       vertical-align: middle;
       text-align: center;
@@ -22,12 +22,13 @@
   <div id="board"></div>
   <script>
     const el = document.getElementById('board')
-    const matrixOrder = 3 // 矩阵阶级
-    const winNumber  = 3
+    const matrixOrder = 5 // 矩阵阶级
+    const winNumber  = 5
     const playerTexts = ['', '⭕', '❌']
     const pattern = Array(matrixOrder*matrixOrder).fill(0)
-
-    let currentPlayer = 2
+    const possessedRange = new Map()
+    const computerRange = new Set()
+    let currentPlayer = 1
 
     /**
      * 渲染棋盘
@@ -37,7 +38,7 @@
       for (let row = 0; row < matrixOrder; row++) {
         for (let col = 0; col < matrixOrder; col++) {
           const square = document.createElement('span')
-          square.innerText = playerTexts[pattern[getPoint(row, col)]]
+          square.innerText = playerTexts[pattern[getPoint(row, col)]] + getPoint(row, col)
           square.classList.add('square')
           square.addEventListener('click', () => {
             userMove(row, col)
@@ -52,15 +53,20 @@
     function userMove (row, col) {
       if (!pattern[getPoint(row, col)]) {
         pattern[getPoint(row, col)] = currentPlayer
+        possessedRange.set(getPoint(row, col), `${row}-${col}`)
         render()
+
         if (checkWin(pattern, currentPlayer, row, col)) {
           alert(playerTexts[currentPlayer] + ' is winner')
           return
         }
+
         currentPlayer = 3 - currentPlayer // 玩家轮换
+        // 更新电脑可下的范围
+        updateComputerRange(pattern)
         // 电脑反应太快了，让它慢一点，哈哈
         setTimeout(() => {
-          computerMove()
+          // computerMove()
         }, 300)
       }
     }
@@ -70,6 +76,7 @@
       if (position) {
         const [row, col] = position
         pattern[getPoint(row, col)] = currentPlayer
+        possessedRange.set(getPoint(row, col), `${row}-${col}`)
         render()
 
         if (checkWin(pattern, currentPlayer, row, col)) {
@@ -124,12 +131,11 @@
       [row, col] = coordinateByDirection[direction](row, col)
 
       // 边界
-      if (row < 0 || row >= matrixOrder) return deep - 1
-      if (col < 0 || col >= matrixOrder) return deep - 1
+      if (isOutBoard(row, col)) return deep - 1
       // 非等
       if (pattern[getPoint(row, col)] !== player) return deep - 1
       // 最大深度时，返回
-      if (deep === 2) return deep
+      if (deep === winNumber - 1) return deep
 
       return dfs(pattern, player, row, col, direction, deep + 1)
     }
@@ -142,7 +148,6 @@
       for (let row = 0; row < matrixOrder; row++) {
         for (let col = 0; col < matrixOrder; col++) {
           if (pattern[getPoint(row, col)]) continue;
-
           const clonePattern = clone(pattern)
           clonePattern[getPoint(row, col)] = player
           if (checkWin(clonePattern, player, row, col)) {
@@ -158,7 +163,9 @@
      * 选择一个最好的落子位置
      * @return { position, result: -1输 | 0和局 | 1赢 }
     */
-    function bestChoice (pattern, player) {
+    function bestChoice (pattern, player, deep = 0) {
+      if (deep >= 6) return { position: null, result: 0 }
+      const range = updateComputerRange(possessedRange)
       // 直接赢了
       let position = willWin(pattern, player)
       if (position) {
@@ -173,17 +180,43 @@
             continue;
           const clonePattern = clone(pattern)
           clonePattern[getPoint(row, col)] = player
-          let opponent = bestChoice(clonePattern, 3 - player) // 对手走棋
+          let opponent = bestChoice(clonePattern, 3 - player, deep + 1) // 对手走棋
           if (-opponent.result > result) {
             position = [row, col]
             result = -opponent.result
           }
         }
       }
+      
+      for (let point of computerRange) {
+        computerRange
+      }
+
       return {
         result: position ? result : 0,
         position
       }
+    }
+
+    function updateComputerRange (pattern) {
+      const range = new Map()
+
+      possessedRange.forEach((value) => {
+        const [row, col] = value.split('-')
+        for (let d in coordinateByDirection) {
+          const [r, c] = coordinateByDirection[d](+row, +col)
+          const point = getPoint(r, c)
+          if (!isOutBoard(r, c) && !pattern[point] && !range.has(point)) {
+            range.set(point, `${r}-${c}`)
+          }
+        }
+      })
+      return range
+    }
+
+    // 是否超出边界
+    function isOutBoard(row, col) {
+      return (row < 0 || row >= matrixOrder) || (col < 0 || col >= matrixOrder)
     }
 
     function getPoint(row, col) {
