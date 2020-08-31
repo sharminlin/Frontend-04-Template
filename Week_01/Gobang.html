@@ -62,8 +62,9 @@
         }
 
         currentPlayer = 3 - currentPlayer // 玩家轮换
-
-        computerMove()
+        setTimeout(() => {
+          computerMove()
+        }, 0);
       }
     }
 
