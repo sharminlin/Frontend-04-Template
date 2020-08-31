@@ -27,7 +27,6 @@
     const playerTexts = ['', '⭕', '❌']
     const pattern = Array(matrixOrder*matrixOrder).fill(0)
     const possessedRange = new Map()
-    const computerRange = new Set()
     let currentPlayer = 1
 
     /**
@@ -38,7 +37,7 @@
       for (let row = 0; row < matrixOrder; row++) {
         for (let col = 0; col < matrixOrder; col++) {
           const square = document.createElement('span')
-          square.innerText = playerTexts[pattern[getPoint(row, col)]] + getPoint(row, col)
+          square.innerText = playerTexts[pattern[getPoint(row, col)]]
           square.classList.add('square')
           square.addEventListener('click', () => {
             userMove(row, col)
@@ -62,11 +61,9 @@
         }
 
         currentPlayer = 3 - currentPlayer // 玩家轮换
-        // 更新电脑可下的范围
-        updateComputerRange(pattern)
         // 电脑反应太快了，让它慢一点，哈哈
         setTimeout(() => {
-          // computerMove()
+          computerMove()
         }, 300)
       }
     }
@@ -144,15 +141,13 @@
      * 判断下一步是否即将胜利
      * @return [row, col] | null
      */
-    function willWin (pattern, player) {
-      for (let row = 0; row < matrixOrder; row++) {
-        for (let col = 0; col < matrixOrder; col++) {
-          if (pattern[getPoint(row, col)]) continue;
-          const clonePattern = clone(pattern)
-          clonePattern[getPoint(row, col)] = player
-          if (checkWin(clonePattern, player, row, col)) {
-            return [row, col]
-          }
+    function willWin (pattern, player, range) {
+      for (let [ key, value ] of range) {
+        const [row, col] = value.split('-').map(i => Number(i))
+        const clonePattern = clone(pattern)
+        clonePattern[getPoint(row, col)] = player
+        if (checkWin(clonePattern, player, row, col)) {
+          return [row, col]
         }
       }
 
@@ -167,29 +162,26 @@
       if (deep >= 6) return { position: null, result: 0 }
       const range = updateComputerRange(possessedRange)
       // 直接赢了
-      let position = willWin(pattern, player)
+      let position = willWin(pattern, player, range)
       if (position) {
         return { position, result: 1 }
       }
 
       let result = -2
 
-      for (let row = 0; row < matrixOrder; row++) {
-        for (let col = 0; col < matrixOrder; col++) {
-          if (pattern[getPoint(row, col)])
-            continue;
-          const clonePattern = clone(pattern)
-          clonePattern[getPoint(row, col)] = player
-          let opponent = bestChoice(clonePattern, 3 - player, deep + 1) // 对手走棋
-          if (-opponent.result > result) {
-            position = [row, col]
-            result = -opponent.result
-          }
+      for (let [ key, value ] of range) {
+        const [row, col] = value.split('-').map(i => Number(i))
+        const clonePattern = clone(pattern)
+        clonePattern[key] = player
+        // 记录
+        possessedRange.set(key, `${row}-${col}`)
+        let opponent = bestChoice(clonePattern, 3 - player, deep + 1) // 对手走棋
+        if (-opponent.result > result) {
+          position = [row, col]
+          result = -opponent.result
         }
-      }
-      
-      for (let point of computerRange) {
-        computerRange
+        // 移除记录
+        possessedRange.delete(key)
       }
 
       return {
