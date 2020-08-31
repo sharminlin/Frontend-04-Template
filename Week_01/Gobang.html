@@ -25,8 +25,8 @@
     const matrixOrder = 5 // 矩阵阶级
     const winNumber  = 5
     const playerTexts = ['', '⭕', '❌']
-    const pattern = Array(matrixOrder*matrixOrder).fill(0)
-    const possessedRange = new Map()
+    const pattern = Array(matrixOrder*matrixOrder)
+    const possessedRange = new Map() // 已落子的点的集合 point: player
     let currentPlayer = 1
 
     /**
@@ -37,12 +37,13 @@
       for (let row = 0; row < matrixOrder; row++) {
         for (let col = 0; col < matrixOrder; col++) {
           const square = document.createElement('span')
-          square.innerText = playerTexts[pattern[getPoint(row, col)]]
+          square.innerText = ''
           square.classList.add('square')
           square.addEventListener('click', () => {
             userMove(row, col)
           })
           el.appendChild(square)
+          pattern[getPoint(row, col)] = square
         }
         el.appendChild(document.createElement('br'))
       }
@@ -50,33 +51,31 @@
 
     // 落子
     function userMove (row, col) {
-      if (!pattern[getPoint(row, col)]) {
-        pattern[getPoint(row, col)] = currentPlayer
-        possessedRange.set(getPoint(row, col), `${row}-${col}`)
-        render()
+      const point = getPoint(row, col)
+      if (!possessedRange.has(point)) {
+        possessedRange.set(point, currentPlayer)
+        pattern[point].innerText = playerTexts[currentPlayer]
 
-        if (checkWin(pattern, currentPlayer, row, col)) {
+        if (checkWin(currentPlayer, row, col)) {
           alert(playerTexts[currentPlayer] + ' is winner')
           return
         }
 
         currentPlayer = 3 - currentPlayer // 玩家轮换
-        // 电脑反应太快了，让它慢一点，哈哈
-        setTimeout(() => {
-          computerMove()
-        }, 300)
+
+        computerMove()
       }
     }
 
     function computerMove () {
-      const { position } = bestChoice(pattern, currentPlayer)
+      const { position } = bestChoice(currentPlayer)
       if (position) {
         const [row, col] = position
-        pattern[getPoint(row, col)] = currentPlayer
-        possessedRange.set(getPoint(row, col), `${row}-${col}`)
-        render()
+        const point = getPoint(row, col)
+        possessedRange.set(point, currentPlayer)
+        pattern[point].innerText = playerTexts[currentPlayer]
 
-        if (checkWin(pattern, currentPlayer, row, col)) {
+        if (checkWin(currentPlayer, row, col)) {
           alert(playerTexts[currentPlayer] + ' is winner')
           return
         }
@@ -110,12 +109,12 @@
     /**
      * 判断当前一步是否已胜利
      */
-    function checkWin (pattern, player, row, col) {
+    function checkWin (player, row, col) {
       // 8个方向 4对深度搜索步数相加
       for (let i = 0; i < directions.length; i++) {
         const [d0, d1] = directions[i]
-        const d0N = dfs(pattern, player, row, col, d0, 1)
-        const d1N = dfs(pattern, player, row, col, d1, 1)
+        const d0N = dfs(player, row, col, d0, 1)
+        const d1N = dfs(player, row, col, d1, 1)
         if (d0N + d1N + 1 >= winNumber) {
           return true
         }
@@ -124,31 +123,33 @@
       return false
     }
 
-    function dfs (pattern, player, row, col, direction, deep) {
+    function dfs (player, row, col, direction, deep) {
       [row, col] = coordinateByDirection[direction](row, col)
 
       // 边界
       if (isOutBoard(row, col)) return deep - 1
       // 非等
-      if (pattern[getPoint(row, col)] !== player) return deep - 1
+      if (possessedRange.get(getPoint(row, col)) !== player) return deep - 1
       // 最大深度时，返回
       if (deep === winNumber - 1) return deep
 
-      return dfs(pattern, player, row, col, direction, deep + 1)
+      return dfs(player, row, col, direction, deep + 1)
     }
 
     /*
      * 判断下一步是否即将胜利
      * @return [row, col] | null
      */
-    function willWin (pattern, player, range) {
-      for (let [ key, value ] of range) {
-        const [row, col] = value.split('-').map(i => Number(i))
-        const clonePattern = clone(pattern)
-        clonePattern[getPoint(row, col)] = player
-        if (checkWin(clonePattern, player, row, col)) {
+    function willWin (player, range) {
+      for (let value of range) {
+        const [row, col] = getCoordinate(value)
+        const point = getPoint(row, col)
+        possessedRange.set(point, player)
+        if (checkWin(player, row, col)) {
+          possessedRange.delete(point)
           return [row, col]
         }
+        possessedRange.delete(point)
       }
 
       return null
@@ -158,30 +159,29 @@
      * 选择一个最好的落子位置
      * @return { position, result: -1输 | 0和局 | 1赢 }
     */
-    function bestChoice (pattern, player, deep = 0) {
-      if (deep >= 6) return { position: null, result: 0 }
-      const range = updateComputerRange(possessedRange)
+    function bestChoice (player, deep = 0) {
+      if (deep >= 5) return { position: null, result: 0 }
+      const computerRange = updateComputerRange(possessedRange)
       // 直接赢了
-      let position = willWin(pattern, player, range)
+      let position = willWin(player, computerRange)
       if (position) {
         return { position, result: 1 }
       }
 
       let result = -2
 
-      for (let [ key, value ] of range) {
-        const [row, col] = value.split('-').map(i => Number(i))
-        const clonePattern = clone(pattern)
-        clonePattern[key] = player
+      for (let value of computerRange) {
+        if (possessedRange.has(value)) continue;
         // 记录
-        possessedRange.set(key, `${row}-${col}`)
-        let opponent = bestChoice(clonePattern, 3 - player, deep + 1) // 对手走棋
+        const [row, col] = getCoordinate(value)
+        possessedRange.set(value, player)
+        const opponent = bestChoice(3 - player, deep + 1) // 对手走棋
         if (-opponent.result > result) {
           position = [row, col]
           result = -opponent.result
         }
         // 移除记录
-        possessedRange.delete(key)
+        possessedRange.delete(value)
       }
 
       return {
@@ -190,20 +190,23 @@
       }
     }
 
-    function updateComputerRange (pattern) {
-      const range = new Map()
+    // 根据已有点，推论出电脑可画点
+    // @return Set<Point[]>
+    function updateComputerRange () {
+      const computerRange = new Set()
 
-      possessedRange.forEach((value) => {
-        const [row, col] = value.split('-')
+      possessedRange.forEach((value, key) => {
+        const [row, col] = getCoordinate(key)
         for (let d in coordinateByDirection) {
-          const [r, c] = coordinateByDirection[d](+row, +col)
+          const [r, c] = coordinateByDirection[d](row, col)
           const point = getPoint(r, c)
-          if (!isOutBoard(r, c) && !pattern[point] && !range.has(point)) {
-            range.set(point, `${r}-${c}`)
+          if (!isOutBoard(r, c) && !possessedRange.has(point) && !computerRange.has(point)) {
+            computerRange.add(point)
           }
         }
       })
-      return range
+
+      return computerRange
     }
 
     // 是否超出边界
@@ -213,6 +216,12 @@
 
     function getPoint(row, col) {
       return row * matrixOrder + col
+    }
+
+    function getCoordinate (point) {
+      const row = Math.floor(point / matrixOrder)
+      const col = point % matrixOrder
+      return [row, col]
     }
 
     function clone (data) {
