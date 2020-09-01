@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    .cell {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      line-height: 7px;
+      background-color: #f5f5f5;
+      border-width: 0 1px 1px 0;
+      border-color: white;
+      border-style: solid;
+      vertical-align: top;
+    }
+    #container {
+      width: 701px;
+      font-size: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <button onclick="localStorage.setItem('map', JSON.stringify(map))">save</button>
+  <button onclick="localStorage.removeItem('map')">clear</button>
+  <script>
+    let map = localStorage.getItem('map') ? JSON.parse(localStorage.getItem('map')) : Array(10000).fill(0)
+    let container = document.getElementById('container')
+    for (let row = 0; row < 100; row++) {
+      for (let col = 0; col < 100; col++) {
+        let el = document.createElement('div')
+        el.classList.add('cell')
+
+        if (map[getPoint(row, col)] === 1)
+          el.style.backgroundColor = '#000';
+
+        el.addEventListener('mousemove', e => {
+          if (mousedown) {
+            map[getPoint(row, col)] = clear ? 0 : 1
+            el.style.backgroundColor = clear ? '#f5f5f5' : '#000'
+          }
+        })
+        container.appendChild(el)
+      }
+    }
+
+    function getPoint(row, col) {
+      return row * 100 + col
+    }
+
+    function sleep (t) {
+      return new Promise(resolve => {
+        setTimeout(resolve, t)
+      })
+    }
+
+    let mousedown = false
+    let clear = false
+    document.addEventListener('mousedown', e => {
+      mousedown = true
+      clear = (e.which === 3) // 右键按下即为清除
+    })
+    document.addEventListener('mouseup', () => mousedown = false)
+    document.addEventListener('contextmenu', e => e.preventDefault())
+
+    async function findPath (map, start, end) {
+      const queue = new BinaryHeap([], (a, b) => distance(a) - distance(b))
+      const table = Object.create(map)
+      // 初始化起点
+      insert(start[0], start[1], null)
+
+      async function insert(row, col, pre) {
+        if (row < 0 || row >= 100 || col < 0 || col >= 100) return
+        const value = table[getPoint(row, col)]
+        if (value === null) return
+        if (!value) {
+          table[getPoint(row, col)] = pre
+          // 入队
+          queue.give([row, col, pre ? pre[2] + 1: 0])
+          container.children[getPoint(row, col)].style.backgroundColor = 'red'
+        } else if (value[2] > pre[2]) { // 最短路径
+          table[getPoint(row, col)] = pre
+        }
+      }
+
+      function distance (point) {
+        return (point[0] - end[0]) ** 2 + (point[1] - end[1]) ** 2
+      }
+
+      while(queue.size) {
+        const [row, col, deep] = queue.take()
+        if (row === end[0] && col === end[1]) {
+          const path = [end]
+          let pre = table[getPoint(row, col)]
+          while(pre && typeof pre === 'object') {
+            path.push(pre)
+            let [r, c] = pre
+            container.children[getPoint(r, c)].style.backgroundColor = 'green'
+            pre = table[getPoint(r, c)]
+            await sleep(30)
+          }
+
+          return path
+        }
+        await insert(row - 1, col, [row, col, deep])
+        await insert(row + 1, col, [row, col, deep])
+        await insert(row, col - 1, [row, col, deep])
+        await insert(row, col + 1, [row, col, deep])
+
+        await insert(row - 1, col - 1, [row, col, deep])
+        await insert(row + 1, col + 1, [row, col, deep])
+        await insert(row - 1, col + 1, [row, col, deep])
+        await insert(row + 1, col - 1, [row, col, deep])
+      }
+
+      return null
+    }
+
+    /* 二叉堆 */
+    class BinaryHeap {
+      constructor(heap, compare) {
+        this.heap = heap
+        this.compare = compare || ((a, b) => a - b)
+      }
+      get size() {
+        return this.heap.length
+      }
+      take() {
+        if (!this.size) return
+        // 取根值
+        const root = this.heap[0]
+        // 末尾值占据根值
+        this.heap[0] = this.heap[this.size - 1]
+        this.heap.pop()
+        // DO 下沉调整
+        this.sink(0)
+        return root
+      }
+      give(v) {
+        // 尾部追加
+        this.heap.push(v)
+        // 上浮调整
+        this.floatUp(this.size - 1)
+      }
+      // 下沉
+      sink(i) {
+        let indexList = [/* 本父节点 */i, /* 左子节点 */2*i+1, /* 右子节点 */2*i+2].filter(k => k >= 0 && k < this.size)
+        if (!indexList.length) return
+        // 实现最小堆，找三个中最小的
+        let minIndex = this.getMinInMutilple(indexList)
+        // 如果不是i，则交换
+        if (minIndex !== i) {
+          let temp = this.heap[i]
+          this.heap[i] = this.heap[minIndex]
+          this.heap[minIndex] = temp
+          // 递归
+          this.sink(minIndex)
+        }
+      }
+      getMinInMutilple(indexList) {
+        let minIndex = indexList[0]
+        for (let i = 1; i < indexList.length; i++) {
+          if (this.getMin(minIndex, indexList[i]) !== minIndex) {
+            minIndex = indexList[i]
+          }
+        }
+        return minIndex
+      }
+      getMin (i, j) {
+        return this.compare(this.heap[i], this.heap[j]) > 0 ? j : i
+      }
+      // 上浮
+      floatUp(i) {
+        let father = Math.floor((i - 1) / 2)
+        // 超出边界
+        if (father < 0 || father >= this.size) return
+        // 最小堆，最小值不是父节点，交互值并递归
+        if (this.getMin(father, i) !== father) {
+          let temp = this.heap[father]
+          this.heap[father] = this.heap[i]
+          this.heap[i] = temp
+          // 递归
+          this.floatUp(father)
+        }
+      }
+    }
+  </script>
+</body>
+</html>
