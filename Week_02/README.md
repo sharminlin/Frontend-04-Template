@@ -90,7 +90,7 @@ path = fmin(start, end) = fmin(start, end - 1) + 1
 
 在求路径时，我们存了个路径链表，节点是前置点`[row, col]`，此时，加入一个节点深度值`[row, col, deep]`。
 
-那么等下一次某条路径也要走这个点时，我们取最小深度的前置点。
+那么等下一次某条路径也要走这个点时，我们比较`deep`值，取最小深度的前置点。
 
 ### 二叉堆
 
@@ -113,3 +113,63 @@ path = fmin(start, end) = fmin(start, end - 1) + 1
 
 1. 追加到尾部
 2. 与父节点比较，比父节点大/小，则交换，并递归。直到满足二叉栈结构，或者到顶部
+
+## LL算法构建四则运算AST
+
+### 正则exec() 
+
+`RegExpObject.exec(string)`用于检索字符串中的正则表达式的匹配。
+
+当正则不带`g`的正则表达式，`exec`的表现与`match`相同。
+
+当是一个带`g`的全局正则表达式，它会在 `RegExpObjec`t 的 `lastIndex` 属性指定的字符处开始检索字符串。检索成功，`lastIndex`将会指向匹配文本的最后一个字符的下一个位置。然后反复执行`exec`，直到匹配结果为`null`。
+
+### tokenize 词法分析
+
+通过正则`exec`，重复解析获取`token`词，同时做一个字典表，标识每一个`token`类型。比如：
+
+``` js
+'1 * 2 + 3'
+
+->
+
+[
+  { type: 'Number', value: '1' }
+  { type: 'Whitespace', value: ' ' },
+  { type: '*', value: '*' },
+  { type: 'Whitespace', value: ' ' },
+  { type: 'Number', value: '2' },
+  { type: 'Whitespace', value: ' ' },
+  { type: '+', value: '+' },
+  { type: 'Whitespace', value: ' ' },
+  { type: 'Number', value: '3' },
+  { type: "EOF" } // 终止符
+]
+```
+
+### 语法分析
+
+``` html
+<!-- 一个完整表达式由一个加减法表达式和终止符构成 -->
+<Expresion> ::= <AdditiveExpresion><EOF>
+
+<!-- 一个加减法表达式 -->
+<AdditiveExpresion> ::= 
+  <MultiplicativeExpresion>
+  | <AdditiveExpresion><+><MultiplicativeExpresion>
+  | <AdditiveExpresion><-><MultiplicativeExpresion>
+
+<!-- 一个乘除法表达式 -->
+<MultiplicativeExpresion> ::= 
+  <Number>
+  | <MultiplicativeExpresion><*><Number>
+  | <MultiplicativeExpresion></><Number>
+```
+
+从左往右构建`1+1*3`
+1. `Number<1>` -> `MultiplicativeExpresion<1>`
+2. 右侧是`+`，不符合乘除法语法，返回执行加减法规则
+3. `MultiplicativeExpresion<1>` -> `AdditiveExpresion<MultiplicativeExpresion<1>>`
+4. 留存`AdditiveExpresion<MultiplicativeExpresion<1>>+`，乘除法规则解析后面的`1*3`重走第一步1返回`MultiplicativeExpresion<MultiplicativeExpresion<1>*3>`
+5. 再构成一个`AdditiveExpresion<AdditiveExpresion<1>+MultiplicativeExpresion<MultiplicativeExpresion<1>*3>>`
+6. 得到表达式

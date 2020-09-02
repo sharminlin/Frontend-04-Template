@@ -1,0 +1,131 @@
+<script>
+  const reg = /([\d\.]+)|([ \t]+)|([\r\n]+)|(\+)|(\-)|(\*)|(\/)/g
+  const dictionary = ['Number', 'WhiteSpace', 'LineTerminator', '+', '-', '*', '/']
+
+  function * tokenize(source) {
+    let lastIndex = 0
+    let result = null
+
+    while(true) {
+      lastIndex = reg.lastIndex
+      result = reg.exec(source)
+      if (!result)
+        break;
+      // lastIndex的变化跨度大于匹配的字符串，说明中间有词法之外的未知字符，说明字符串不合法
+      if (reg.lastIndex - lastIndex > result[0].length)
+        break;
+
+      let token = {
+        value: result[0],
+        type: ''
+      }
+
+      // 寻找这个token字符串对应的词法标识，即标记这个字符串是什么东西
+      for (let i = 1; i < result.length; i++) {
+        if (result[i]) {
+          token.type = dictionary[i - 1]
+        }
+      }
+      yield token
+    }
+    yield { type: 'EOF' }
+  }
+
+  let source = []
+
+  // 这里使用for of 迭代生成器
+  for (let token of tokenize('1024 + 1 * 2 / 5')) {
+    if (token.type !== 'WhiteSpace' && token.type !== 'LineTerminator') {
+      source.push(token)
+    }
+  }
+
+  function Expresion (tokens) {
+    if (source[0].type === 'AdditiveExpresion' && source[1] && source[1].type === 'EOF') {
+      const node = {
+        type: 'Expresion',
+        children: [source.shift(), source.shift()]
+      }
+      source.unshift(node)
+      return node
+    }
+    AdditiveExpresion(source)
+    return Expresion(source)
+  }
+
+  // 加减法
+  // 形同乘除法，但每遇到一个Number，都会将number包装成MultiplicativeExpresion
+  function AdditiveExpresion (source) {
+    if (!source.length) return source
+    // 取出头
+    let head = source[0]
+    if (head.type === 'MultiplicativeExpresion') {
+      //MultiplicativeExpresion开头，包装成AdditiveExpresion类型
+      const node = {
+        type: 'AdditiveExpresion',
+        children: [head]
+      }
+      source[0] = node // 丢回去
+      return AdditiveExpresion(source)
+    } else if (head.type === 'AdditiveExpresion' && source[1] && (source[1].type === '+' || source[1].type === '-')) {
+      // 说明前面是包装过的，再取
+      const operator = source[1]
+      const node = {
+        type: 'AdditiveExpresion',
+        operator: operator.type,
+        children: [head, operator]
+      }
+      source.shift() // 丢掉head
+      source.shift() // 丢掉operator
+      MultiplicativeExpresion(source) // 开头是Number，转成MultiplicativeExpresion
+      node.children.push(source.shift())
+      source.unshift(node) // 丢回去
+      return AdditiveExpresion(source)
+    } else if (head.type === 'AdditiveExpresion') {
+      return head
+    }
+
+    MultiplicativeExpresion(source)
+    return AdditiveExpresion(source)
+  }
+
+  // 乘除法
+  // 这里要做的是把形如 1 * 2 * 3 * 4
+  // (1*2) * 3 * 4
+  // ((1*2) * 3) * 4
+  // (((1*2) * 3) * 4)
+  function MultiplicativeExpresion (source) {
+    if (!source.length) return source
+    // 取头
+    let head = source[0]
+    if (head.type === 'Number') {
+      // Number开头，包装成MultiplicativeExpresion类型
+      const node = {
+        type: 'MultiplicativeExpresion',
+        children: [head]
+      }
+      source[0] = node // 丢回去
+      return MultiplicativeExpresion(source)
+    } else if (head.type === 'MultiplicativeExpresion' && source[1] && (source[1].type === '*' || source[1].type === '/')) {
+      // 说明前面是包装过的，再取
+      const operator = source[1]
+      const node = {
+        type: 'MultiplicativeExpresion',
+        operator: operator.type,
+        children: [head, operator]
+      }
+      source.shift() // 丢掉head
+      source.shift() // 丢掉operator
+      node.children.push(source.shift())
+      source.unshift(node) // 丢回去
+      return MultiplicativeExpresion(source)
+    } else if (head.type === 'MultiplicativeExpresion') {
+      return head
+    }
+
+    return source
+  }
+
+  console.log(Expresion())
+  
+</script>

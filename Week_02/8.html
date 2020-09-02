@@ -1,0 +1,39 @@
+<script>
+  const reg = /([\d\.]+)|([ \t]+)|([\r\n]+)|(\+)|(\-)|(\*)|(\/)/g
+  const dictionary = ['Number', 'Whitespace', 'LineTerminator', '+', '-', '*', '/']
+
+  function * tokenize(source) {
+    let lastIndex = 0
+    let result = null
+
+    while(true) {
+      lastIndex = reg.lastIndex
+      result = reg.exec(source)
+      if (!result)
+        break;
+      // lastIndex的变化跨度大于匹配的字符串，说明中间有词法之外的未知字符，说明字符串不合法
+      if (reg.lastIndex - lastIndex > result[0].length)
+        break;
+
+      let token = {
+        value: result[0],
+        type: ''
+      }
+
+      // 寻找这个token字符串对应的词法标识，即标记这个字符串是什么东西
+      for (let i = 1; i < result.length; i++) {
+        if (result[i]) {
+          token.type = dictionary[i - 1]
+        }
+      }
+      yield token
+    }
+    yield { type: 'EOF' }
+  }
+
+  // 这里使用for of 迭代生成器
+  for (let value of tokenize('1024 * 2 + 10')) {
+    console.log(value)
+  }
+  
+</script>
