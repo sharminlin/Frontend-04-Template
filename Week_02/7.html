@@ -1,0 +1,19 @@
+<script>
+  const reg = /([\d\.]+)|([ \t]+)|([\n\r]+)|(\+)|(\-)|(\*)|(\/)/g
+  const dictionary = ['Number', 'Whitespace', 'LineTerminator', '+', '-', '*', '/']
+
+  function tokenize (source) {
+    let result = null
+    while(true) {
+      result = reg.exec(source)
+      if (!result) break
+
+      for (let i = 1; i<result.length; i++) {
+        if (result[i])
+          console.log(dictionary[i-1])
+      }
+    }
+  }
+
+  tokenize('1024 + 10 * 5')
+</script>
