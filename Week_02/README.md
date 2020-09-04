@@ -114,6 +114,77 @@ path = fmin(start, end) = fmin(start, end - 1) + 1
 1. 追加到尾部
 2. 与父节点比较，比父节点大/小，则交换，并递归。直到满足二叉栈结构，或者到顶部
 
+看看实现代码：
+``` js
+class BinaryHeap {
+  constructor(heap, compare) {
+    this.heap = heap
+    this.compare = compare || ((a, b) => a - b)
+  }
+  get size() {
+    return this.heap.length
+  }
+  take() {
+    if (!this.size) return
+    // 取根值
+    const root = this.heap[0]
+    // 末尾值占据根值
+    this.heap[0] = this.heap[this.size - 1]
+    this.heap.pop()
+    // DO 下沉调整
+    this.sink(0)
+    return root
+  }
+  give(v) {
+    // 尾部追加
+    this.heap.push(v)
+    // 上浮调整
+    this.floatUp(this.size - 1)
+  }
+  // 下沉
+  sink(i) {
+    let indexList = [/* 本父节点 */i, /* 左子节点 */2*i+1, /* 右子节点 */2*i+2].filter(k => k >= 0 && k < this.size)
+    if (!indexList.length) return
+    // 实现最小堆，找三个中最小的
+    let minIndex = this.getMinInMutilple(indexList)
+    // 如果不是i，则交换
+    if (minIndex !== i) {
+      let temp = this.heap[i]
+      this.heap[i] = this.heap[minIndex]
+      this.heap[minIndex] = temp
+      // 递归
+      this.sink(minIndex)
+    }
+  }
+  // 上浮
+  floatUp(i) {
+    let father = Math.floor((i - 1) / 2)
+    // 超出边界
+    if (father < 0 || father >= this.size) return
+    // 最小堆，最小值不是父节点，交互值并递归
+    if (this.getMin(father, i) !== father) {
+      let temp = this.heap[father]
+      this.heap[father] = this.heap[i]
+      this.heap[i] = temp
+      // 递归
+      this.floatUp(father)
+    }
+  }
+  getMinInMutilple(indexList) {
+    let minIndex = indexList[0]
+    for (let i = 1; i < indexList.length; i++) {
+      if (this.getMin(minIndex, indexList[i]) !== minIndex) {
+        minIndex = indexList[i]
+      }
+    }
+    return minIndex
+  }
+  getMin(i, j) {
+    return this.compare(this.heap[i], this.heap[j]) > 0 ? j : i
+  }
+}
+```
+
 ## LL算法构建四则运算AST
 
 ### 正则exec() 
