@@ -25,7 +25,8 @@
 <body>
   <div id="container"></div>
   <button onclick="localStorage.setItem('map', JSON.stringify(map))">save</button>
-  <button onclick="localStorage.removeItem('map')">clear</button>
+  <button onclick="clearMap()">clear</button>
+  <button onclick="start()">go</button>
   <script>
     let map = localStorage.getItem('map') ? JSON.parse(localStorage.getItem('map')) : Array(10000).fill(0)
     let container = document.getElementById('container')
@@ -67,7 +68,7 @@
     document.addEventListener('contextmenu', e => e.preventDefault())
 
     async function findPath (map, start, end) {
-      const queue = new BinaryHeap([], (a, b) => distance(a) - distance(b))
+      const queue = new BinaryHeap([], (a, b) => fAstar(a) - fAstar(b))
       const table = Object.create(map)
       // 初始化起点
       insert(start[0], start[1], null)
@@ -76,13 +77,17 @@
         if (row < 0 || row >= 100 || col < 0 || col >= 100) return
         const value = table[getPoint(row, col)]
         if (value === null) return
+        const nextWeight = getWeight(pre, [row, col], pre ? pre[2] : 0)
+
         if (!value) {
-          table[getPoint(row, col)] = pre
+          table[getPoint(row, col)] = pre && [...pre, nextWeight]
           // 入队
-          queue.give([row, col, pre ? pre[2] + 1: 0])
-          container.children[getPoint(row, col)].style.backgroundColor = 'red'
+          queue.give([row, col, pre ? nextWeight : 0])
+          
+          container.children[getPoint(row, col)].style.backgroundColor = '#ffb5b5'
         } else if (value[2] > pre[2]) { // 最短路径
-          table[getPoint(row, col)] = pre
+          container.children[getPoint(row, col)].style.backgroundColor = 'red'
+          table[getPoint(row, col)] = pre && [...pre, nextWeight]
         }
       }
 
@@ -90,8 +95,17 @@
         return (point[0] - end[0]) ** 2 + (point[1] - end[1]) ** 2
       }
 
+      function fAstar (point) {
+        return point[2]
+      }
+
+      function getWeight (point, next, weight) {
+        if (!point) return 0
+        return weight + Math.sqrt((point[0]-next[0])**2 + (point[1]-next[1])**2) + (Math.abs(next[0] - end[0]) + Math.abs(next[1] - end[1]))
+      }
+
       while(queue.size) {
-        const [row, col, deep] = queue.take()
+        const [row, col, weight] = queue.take()
         if (row === end[0] && col === end[1]) {
           const path = [end]
           let pre = table[getPoint(row, col)]
@@ -105,15 +119,15 @@
 
           return path
         }
-        await insert(row - 1, col, [row, col, deep])
-        await insert(row + 1, col, [row, col, deep])
-        await insert(row, col - 1, [row, col, deep])
-        await insert(row, col + 1, [row, col, deep])
+        await insert(row - 1, col, [row, col, weight])
+        await insert(row + 1, col, [row, col, weight])
+        await insert(row, col - 1, [row, col, weight])
+        await insert(row, col + 1, [row, col, weight])
 
-        await insert(row - 1, col - 1, [row, col, deep])
-        await insert(row + 1, col + 1, [row, col, deep])
-        await insert(row - 1, col + 1, [row, col, deep])
-        await insert(row + 1, col - 1, [row, col, deep])
+        await insert(row - 1, col - 1, [row, col, weight])
+        await insert(row + 1, col + 1, [row, col, weight])
+        await insert(row - 1, col + 1, [row, col, weight])
+        await insert(row + 1, col - 1, [row, col, weight])
       }
 
       return null
@@ -186,6 +200,14 @@
           this.floatUp(father)
         }
       }
+    }
+
+    function clearMap () {
+      localStorage.removeItem('map');
+      location.reload()
+    }
+    function start () {
+      findPath(map, [0, 0], [50, 50])
     }
   </script>
 </body>
