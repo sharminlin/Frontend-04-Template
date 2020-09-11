@@ -1,0 +1,92 @@
+<div>
+  <input id='r' type="range" min="0" max="255" />
+</div>
+<div>
+  <input id='g' type="range" min="0" max="255" />
+</div>
+<div>
+  <input id='b' type="range" min="0" max="255" />
+</div>
+<span id="value"></span>
+
+<script>
+  /* ------reactivity------- */
+  const needDepsEffectsStack = []
+  const effects = new WeakMap()
+  const reactivities = new WeakMap()
+  
+  function reactive (target) {
+    // cache
+    if (reactivities.has(target)) return reactivities.get(target)
+  
+    const proxy = new Proxy(target, {
+      get (target, prop) {
+        // console.log('Getter: ', prop)
+        // GET 收集
+        if (needDepsEffectsStack.length) {
+          if (!effects.has(target)) effects.set(target, new Map());
+          if (!effects.get(target).has(prop)) effects.get(target).set(prop, new Set());
+  
+          effects.get(target).get(prop).add(needDepsEffectsStack[needDepsEffectsStack.length - 1]);
+        }
+        
+        if (typeof target[prop] === 'object')
+          return reactive(target[prop]);
+  
+        return target[prop]
+      },
+      set (target, prop, value) {
+        // console.log('Setter: ', prop, value)
+        // SET 触发
+        if (effects.has(target) && effects.get(target).has(prop)) {
+          effects.get(target).get(prop).forEach(fn => {
+            fn()
+          })
+        }
+        target[prop] = value
+      }
+    })
+    reactivities.set(target, proxy)
+    return proxy
+  }
+  
+  function effect (fn) {
+    if (fn.loaded) return
+  
+    fn.loaded = true
+    needDepsEffectsStack.push(fn)
+    fn() // 执行，触发getter收集
+    needDepsEffectsStack.pop()
+  }
+
+  /* --------Dom----------- */
+
+  let color = reactive({
+    r: 0,
+    g: 0,
+    b: 0
+  })
+  const el = {
+    r: document.getElementById('r'),
+    g: document.getElementById('g'),
+    b: document.getElementById('b'),
+    value: document.getElementById('value')
+  }
+  effect(() => {
+    el.r.value = color.r
+  })
+  effect(() => {
+    el.g.value = color.g
+  })
+  effect(() => {
+    el.b.value = color.b
+  })
+
+  effect(() => {
+    el.value.innerText = `rgb: ${color.r} ${color.g} ${color.b}`
+    el.value.style.color = `rgb(${color.r} ${color.g} ${color.b})`
+  })
+  el.r.addEventListener('input', e => color.r = e.target.value)
+  el.g.addEventListener('input', e => color.g = e.target.value)
+  el.b.addEventListener('input', e => color.b = e.target.value)
+</script>

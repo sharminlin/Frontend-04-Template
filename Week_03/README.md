@@ -158,7 +158,9 @@ function match(source, pattern) {
 | - | - | - | - | - | - | - | - |
 | 0 | 0 | 0 | 0 | 0 | 1 | 2 | 3 |
 
-上代码，要吃饭了qaq：
+上代码，首尾匹配，匹配成功双进，j的位置表示后缀能匹配多少个前缀：
+
+**其实就是找前缀与后缀相同的最长值**
 
 ``` js
 function getPmt (pattern) {
@@ -170,12 +172,12 @@ function getPmt (pattern) {
     if (pattern[i] === pattern[j]) {
       i++;
       j++;
-      pmt[i] = j;
+      pmt[i] = j; // 此处往右移一位，pmt[i]记录的是i之前的，不包括i的字符串噢
     } else {
       if (j === 0) {
         i++
       } else {
-        j = pmt[j]
+        j = pmt[j] // 此处不是回退至0，因为j之前的字符串可能存在相同后缀数，比如aab，如果j在b处，回退处应该是1。测试：aabaaac
       }
     }
   }

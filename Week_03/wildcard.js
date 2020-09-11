@@ -76,8 +76,7 @@ function wildcardV3 (source, pattern) {
   const pmt = getPmt(pattern)
   // 四个指针
   let i = 0, j = 0;
-  let iRecord = -1, jRecord = -1;
-
+  let record = -1
   while (i < source.length) {
     if (pattern[j] === '?' || pattern[j] === source[i]) {
       // ? = 直接并进
@@ -86,12 +85,15 @@ function wildcardV3 (source, pattern) {
     } else if (pattern[j] === '*') {
       // 最后一个*，不用比了
       if (j === pattern.length - 1) return true
+      record = j // 记录此时的*所在位置，姑且是个标志位
       j = j + 1
-    } else if (iRecord >= 0) {
-      // 回退
-      // i = iRecord + 1
-      // iRecord++
-      j = pmt[j]
+    } else if (record >= 0) {
+      if (j === pmt[j]) {
+        i++
+      } else {
+        // 回退j
+        j = pmt[j]
+      }
     } else if (pattern[j] !== source[i]) {
       return false
     }
@@ -107,16 +109,28 @@ function wildcardV3 (source, pattern) {
 }
 
 // 研究生成pmt表
+
 // ? 表示任意一个字符，不管咋都+1
 // * 遇到*，回退基础值应该更新为*后面一位
+// 分治吧
 function getPmt (pattern) {
+  let patterns = pattern.split('*')
+  let pmt = []
+  patterns.reduce((base, item) => {
+    // 第一个可能是*，后面跟个*
+    pmt = pmt.concat(item ? genarate(base, item) : [], [0])
+    return base + item.length + 1
+  }, 0)
+  return pmt.slice(0, -1)
+}
+
+function genarate (base, pattern) {
   const pmt = new Array(pattern.length).fill(0)
+
   // 双指针
   let i = 1, j = 0;
-  let base = 0;
-
   while (i < pattern.length) {
-    if (pattern[i] === pattern[j] || pattern[i] === '?' || pattern[j] === '?') {
+    if (pattern[i] === pattern[j] || pattern[i] === '?') {
       i++;
       j++;
       pmt[i] = j;
@@ -128,7 +142,56 @@ function getPmt (pattern) {
       }
     }
   }
+  return pmt.map(item => item + base)
+}
+
+// 不分治
+function getPmtV2 (pattern) {
+  const pmt = new Array(pattern.length).fill(0)
+
+  // 双指针
+  let i = 1, j = 0;
+  let base = 0
+
+  while (i < pattern.length) {
+    // 第一个是*
+    if (j === 0 && pattern[j] === '*') {
+      i = j + 2
+      j = j + 1
+      base = j
+      pmt[j] = base // 补值
+      pmt[i] = base // 补值
+      continue
+    }
+
+    // 遇到*，跳跃
+    if (pattern[i] === '*') {
+      if (i === pattern.length - 1) break;
+
+      j = i + 1
+      i = i + 2
+      base = j
+      pmt[j] = base // 补值
+      pmt[i] = base // 补值
+      continue
+    }
+
+    if (pattern[i] === pattern[j] || pattern[i] === '?') {
+      i++;
+      j++;
+      pmt[i] = j;
+    } else {
+      if (j === base) {
+        i++
+        pmt[i] = base // 补值
+      } else {
+        j = pmt[j]
+      }
+    }
+  }
   return pmt
 }
 
-console.log(wildcardV2('abcaggebdggeaabc', 'ab*ggea?b*'))
+console.log(getPmt('*ggea?b*'))
+console.log(getPmtV2('*ggea?b*'))
+console.log(wildcardV3('abcaggebdggeaabc', 'a*ggea?b*'))
