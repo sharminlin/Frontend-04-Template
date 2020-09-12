@@ -184,3 +184,21 @@ function getPmt (pattern) {
   return pmt
 }
 ```
+
+### Wildcard
+
+模式匹配算法。`?`代表单一字符，`*`代表任意多的字符。
+
+做了一遍之后发现其实有点像KMP。
+
+用递归实现了一次，性能不太好。后面用四个指针重写了。然后结合KMP再重写了一下。主要是pmt表的实现，和普通字符串不一样。不过其实可以看作是几个字符串的pmt表连接在一起而已。
+
+## Proxy
+
+[vue3数据响应式实现](https://github.com/sharminlin/note/blob/master/vue/reactivity.md)
+
+## 拖拽
+
+基本拖拽很简单。
+
+主要是`range`这个API的使用。
