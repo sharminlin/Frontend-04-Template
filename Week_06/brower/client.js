@@ -1,3 +1,4 @@
+const net = require("net")
 
 class Request {
   constructor (options) {
@@ -25,7 +26,7 @@ class Request {
       const parser = new ResponseParser()
       
       if (connection) {
-        connection.write(this.toString()) // todo
+        connection.write(this.toString())
       } else {
         connection = net.createConnection({
           host: this.host,
@@ -50,11 +51,33 @@ class Request {
       })
     })
   }
+
+  toString () {
+    return `${this.method} ${this.path} HTTP/1.1\r
+${Object.keys(this.headers).map(key => `${key}: ${this.headers[key]}`).join('\r\n')}\r
+\r
+${this.bodyText}
+`
+  }
 }
 
-class ResponseParser () {
+class ResponseParser {
   constructor () {
+    this.WAITING_STATUS_LINE = 0 // \r
+    this.WAITING_STATUS_LINE_END = 1
+    this.WAITING_HEADER_NAME = 2
+    this.WAITING_HEADER_SPANCE = 3
+    this.WAITING_HEADER_VALUE = 4
+    this.WAITING_HEADER_LINE_END = 5 // 协议行结束
+    this.WAITING_HEADER_BLOCK_END = 6 // 空行
+    this.WAITING_BODY = 7 // body体
 
+    this.current = this.WAITING_STATUS_LINE
+    this.statusLine = '' // 状态
+    this.headers = {}
+    this.headerName = ''
+    this.headerValue = ''
+    this.bodyParser = null
   }
   receive (string) {
     for (let i = 0; i < string.length; i++) {
@@ -62,14 +85,108 @@ class ResponseParser () {
     }
   }
   receiveChar (char) {
-
+    if (this.current === this.WAITING_STATUS_LINE) {
+      if (char === '\r') {
+        // 进入状态行结束
+        this.current = this.WAITING_STATUS_LINE_END
+      } else {
+        // 存储状态
+        this.statusLine += char
+      }
+    } else if (this.current === this.WAITING_STATUS_LINE_END) {
+      if (char === '\n') {
+        this.current = this.WAITING_HEADER_NAME
+      }
+    } else if (this.current === this.WAITING_HEADER_NAME) {
+      if (char === ':') {
+        this.current === this.WAITING_HEADER_SPANCE
+      } else if (char === '\r') {
+        this.current === this.WAITING_HEADER_BLOCK_END
+        // header结束
+        if (this.headers['Transfer-Encoding'] === 'chunked') {
+          this.bodyParser = new TrunkedBodyParser()
+        }
+      } else {
+        this.headerName += char
+      }
+    } else if (this.current === this.WAITING_HEADER_SPANCE) {
+      if (char === ' ') {
+        this.current === this.WAITING_HEADER_VALUE
+      }
+    } else if (this.current === this.WAITING_HEADER_VALUE) {
+      if (char === '\r') {
+        // header行结束
+        this.current === this.WAITING_HEADER_LINE_END
+        this.headers[this.headerName] = this.headerValue
+        this.headerName = ''
+        this.headerValue = ''
+      } else {
+        this.headerValue += char
+      }
+    } else if (this.current === this.WAITING_HEADER_LINE_END) {
+      if (char === '\n') {
+        this.current = this.WAITING_HEADER_NAME
+      }
+    } else if (this.current === this.WAITING_HEADER_BLOCK_END) {
+      if (char === '\n') {
+        this.current = this.WAITING_BODY
+      }
+    } else if (this.current === this.WAITING_BODY) {
+      console.log(char)
+      this.bodyParser.receiveChar(char)
+    }
+  }
+  get isFinished () {
+    return this.bodyParser.isFinished
   }
 }
 
-(void async function () {
+class TrunkedBodyParser {
+  constructor () {
+    this.WAITING_LENGTH = 0
+    this.WAITING_LENGTH_LINE_END = 1
+    this.READING_TRUNK = 2
+    this.WAITING_NEW_LINE = 3
+    this.WAITING_NEW_LINE_END = 4
+
+    this.length = 0
+    this.content = []
+    this.isFinished = false
+    this.current = this.WAITING_LENGTH
+  }
+  receiveChar (char) {
+    if (this.current === this.WAITING_LENGTH) {
+      if (char === '\r') {
+        if (this.length === 0) {
+          this.isFinished = true
+        }
+        this.current = this.WAITING_LENGTH_LINE_END
+      } else {
+        this.length *= 16
+        this.length += parentInt(char, 16)
+      }
+    } else if (this.current === this.WAITING_LENGTH_LINE_END) {
+      this.content.push(char)
+      this.length--
+      if (this.length === 0) {
+        this.current = this.WAITING_NEW_LINE
+      }
+    } else if (this.current === this.WAITING_NEW_LINE) {
+      if (char === '\r') {
+        this.current = this.WAITING_NEW_LINE_END
+      }
+    } else if (this.current === this.WAITING_NEW_LINE_END) {
+      if (char === '\n') {
+        this.current = this.WAITING_LENGTH
+      }
+    }
+  }
+}
+
+void async function () {
   let request = new Request({
-    host: '',
-    port: '',
+    host: '127.0.0.0',
+    port: 8081,
     method: 'POST',
     path: '/',
     headers: {
@@ -82,4 +199,4 @@ class ResponseParser () {
 
   let response = await request.send()
   console.log(response)
-})();
+}();
