@@ -17,7 +17,7 @@ class Request {
       this.bodyText = Object.keys(this.body).map(key => `${key}=${encodeURIComponent(this.body[key])}`).join('&')
     }
     
-    this.headers['Content-Lenth'] = this.bodyText.length
+    this.headers['Content-Length'] = this.bodyText.length
   }
 
   // 发送请求
@@ -56,8 +56,7 @@ class Request {
     return `${this.method} ${this.path} HTTP/1.1\r
 ${Object.keys(this.headers).map(key => `${key}: ${this.headers[key]}`).join('\r\n')}\r
 \r
-${this.bodyText}
-`
+${this.bodyText}`
   }
 }
 
@@ -81,7 +80,7 @@ class ResponseParser {
   }
   receive (string) {
     for (let i = 0; i < string.length; i++) {
-      this.receiveChar(string.chatAt(i))
+      this.receiveChar(string.charAt(i))
     }
   }
   receiveChar (char) {
@@ -99,9 +98,9 @@ class ResponseParser {
       }
     } else if (this.current === this.WAITING_HEADER_NAME) {
       if (char === ':') {
-        this.current === this.WAITING_HEADER_SPANCE
+        this.current = this.WAITING_HEADER_SPANCE
       } else if (char === '\r') {
-        this.current === this.WAITING_HEADER_BLOCK_END
+        this.current = this.WAITING_HEADER_BLOCK_END
         // header结束
         if (this.headers['Transfer-Encoding'] === 'chunked') {
           this.bodyParser = new TrunkedBodyParser()
@@ -111,12 +110,12 @@ class ResponseParser {
       }
     } else if (this.current === this.WAITING_HEADER_SPANCE) {
       if (char === ' ') {
-        this.current === this.WAITING_HEADER_VALUE
+        this.current = this.WAITING_HEADER_VALUE
       }
     } else if (this.current === this.WAITING_HEADER_VALUE) {
       if (char === '\r') {
         // header行结束
-        this.current === this.WAITING_HEADER_LINE_END
+        this.current = this.WAITING_HEADER_LINE_END
         this.headers[this.headerName] = this.headerValue
         this.headerName = ''
         this.headerValue = ''
@@ -137,7 +136,16 @@ class ResponseParser {
     }
   }
   get isFinished () {
-    return this.bodyParser.isFinished
+    return this.bodyParser && this.bodyParser.isFinished
+  }
+  get response () {
+    this.statusLine.match(/http\/1.1 ([0-9]) ([\s\S])/)
+    return {
+      statusCode: RegExp.$1,
+      statusText: RegExp.$2,
+      headers: this.headers,
+      body: this.bodyParser.content.join('')
+    }
   }
 }
 
@@ -163,7 +171,7 @@ class TrunkedBodyParser {
         this.current = this.WAITING_LENGTH_LINE_END
       } else {
         this.length *= 16
-        this.length += parentInt(char, 16)
+        this.length += parseInt(char, 16)
       }
     } else if (this.current === this.WAITING_LENGTH_LINE_END) {
       this.content.push(char)
@@ -185,8 +193,8 @@ class TrunkedBodyParser {
 
 void async function () {
   let request = new Request({
-    host: '127.0.0.0',
-    port: 8081,
+    host: 'localhost',
+    port: '8081',
     method: 'POST',
     path: '/',
     headers: {

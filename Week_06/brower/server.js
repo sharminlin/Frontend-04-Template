@@ -7,11 +7,11 @@ http.createServer((request, response) => {
   }).on('data', chunk => {
     body.push(chunk.toString())
   }).on('end', () => {
-    body = Buffer.concat(body).toString()
+    // body = Buffer.concat(body).toString()
     console.log('body: ' + body)
     response.writeHead(200, { 'Content-Type': 'text/html' })
-    response.end('hello world\n')
+    response.end(' hello world\n')
   })
 }).listen(8081)
 
-console.log('server started on http://localhost:/8081')
+console.log('server started on http://localhost:8081')
