@@ -24,7 +24,7 @@
   },
     {
       "name": "Launch Program",
-      "program": "${workspaceFolder}/Week_07/brower/client.js",
+      "program": "${workspaceFolder}/Week_08/brower/client.js",
       "request": "launch",
       "skipFiles": [
         "<node_internals>/**"
