@@ -1,3 +1,6 @@
+/**
+ * DOM树
+ */
 const EOF = Symbol('EOF')
 
 let currentToken = null
