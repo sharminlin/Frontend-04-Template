@@ -1,6 +1,7 @@
 /**
  * DOM树
  */
+const { addCssRules, computeCss } = require('./computing')
 const EOF = Symbol('EOF')
 
 let currentToken = null
@@ -27,6 +28,9 @@ function emit(token) {
         })
       }
     }
+
+    computeCss(stack, element)
+
     top.children.push(element)
     element.parent = top
     if (!token.isSelfClosing) {
@@ -37,6 +41,9 @@ function emit(token) {
     if (top.tagName !== token.tagName) {
       throw new Error('Tag start end dose not match!')
     } else {
+      if (top.tagName === 'style') {
+        addCssRules(top.children[0].content)
+      }
       stack.pop()
     }
     currentTextNode = null

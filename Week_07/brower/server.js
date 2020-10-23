@@ -16,12 +16,17 @@ http.createServer((request, response) => {
           <style>
             html, body, #app {
               height: 100%;
-              background-color: #fff
+              background-color: #fff;
+            }
+            #app span {
+              font-size: 18px;
             }
           </style>
         </head>
         <body>
-          <div id="app"></div>
+          <div id="app">
+            <span>x</span>
+          </div>
         </body>
       </html>
     `)
