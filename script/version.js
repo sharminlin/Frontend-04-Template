@@ -1,24 +1,32 @@
 const { exec, execSync } = require('child_process');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
-const ora = require('ora')
+const ora = require('ora');
+const consola = require('consola');
 
 const { name: projectName, version: currentVersion } = require('../package');
 const regVersion = /^\d+\.\d+\.\d+$/;
 const regLineBreak = /\s/;
 const getGitBranch = execSync('git name-rev --name-only HEAD', { encoding: 'utf-8' }).replace(regLineBreak, '');
+const releaseBranch = ['dev'] // 可以更新版本号的分支
+
+if (!releaseBranch.includes(getGitBranch)) {
+  consola.warn(`[notice!] Only the ${releaseBranch.join('/')} branch can update the version`)
+  stepForLint()
+  process.exit(0)
+}
 
 inquirer.prompt([
   {
-    type: 'confirm', //type：input, number, confirm, list, checkbox ... 
-    name: 'isRelease', // key 名
-    message: `${getGitBranch} - Do you need to release a version(current version: ${currentVersion}):`, // 提示信息
-    default: false // 默认值
+    type: 'confirm',
+    name: 'isRelease',
+    message: `${getGitBranch} - Do you need to release a version(${chalk.yellow('current version: ' + currentVersion)}):`,
+    default: false
   },
   {
     type: 'input',
     name: 'releaseVersion',
-    message: `please input next release version(current version: ${currentVersion}):`,
+    message: `please input next release version(${chalk.yellow('current version: ' + currentVersion)}):`,
     when (question) {
       return question.isRelease
     },
@@ -53,7 +61,7 @@ inquirer.prompt([
 
 // lint
 async function stepForLint() {
-  const spinner = ora('lint start...').start()
+  const spinner = ora('lint start...\n').start()
   try {
     await execCommand('yarn run lint')
     spinner.succeed(chalk.green(`[success!] lint success!`))
@@ -65,7 +73,7 @@ async function stepForLint() {
 
 // update vesion
 async function stepForUpdateVersion(releaseVersion) {
-  const spinner = ora('updated version').start()
+  const spinner = ora('updated version\n').start()
   try {
     await execCommand(`yarn version --no-git-tag-version --new-version ${releaseVersion}`)
     spinner.succeed(chalk.green(`[success!] ${projectName} version updated successfully to ${releaseVersion}`))
