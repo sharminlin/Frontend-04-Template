@@ -12,13 +12,13 @@ inquirer.prompt([
   {
     type: 'confirm', //type：input, number, confirm, list, checkbox ... 
     name: 'isRelease', // key 名
-    message: `${getGitBranch} - Do you need to release a version(current: ${currentVersion})`, // 提示信息
+    message: `${getGitBranch} - Do you need to release a version(current version: ${currentVersion}):`, // 提示信息
     default: false // 默认值
   },
   {
     type: 'input',
     name: 'releaseVersion',
-    message: `please input next release version(current: ${currentVersion})`,
+    message: `please input next release version(current version: ${currentVersion}):`,
     when (question) {
       return question.isRelease
     },
@@ -67,7 +67,7 @@ async function stepForLint() {
 async function stepForUpdateVersion(releaseVersion) {
   const spinner = ora('updated version').start()
   try {
-    await command(`yarn version --no-git-tag-version --new-version ${releaseVersion}`)
+    await execCommand(`yarn version --no-git-tag-version --new-version ${releaseVersion}`)
     spinner.succeed(chalk.green(`[success!] ${projectName} version updated successfully to ${releaseVersion}`))
   } catch (error) {
     spinner.fail(chalk.red(`[error!] ${projectName} version update to ${releaseVersion} failed!`))
@@ -77,12 +77,12 @@ async function stepForUpdateVersion(releaseVersion) {
 
 // commit message
 async function stepForChoreCommit(releaseVersion) {
-  const spinner = ora('chore commit...').start()
+  const spinner = ora('chore commit...\n').start()
   try {
-    await command(`git add package.json && git commit -m "chore: bump version to ${releaseVersion} from ${currentVersion}"`)
-    spinner.succeed(chalk.green('[success!] chore commit successfully'))
+    await execCommand(`git add package.json && git commit -m "chore: bump version to ${releaseVersion} from ${currentVersion}"`)
+    spinner.succeed(chalk.green(`[success!] chore: bump version to ${releaseVersion} from ${currentVersion}`))
   } catch (error) {
-    await command(`yarn version --no-git-tag-version --new-version ${currentVersion}`)
+    await execCommand(`yarn version --no-git-tag-version --new-version ${currentVersion}`)
     spinner.fail(chalk.red(`[error!] chore commit failed.`))
     return Promise.reject(error)
   }
