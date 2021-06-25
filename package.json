@@ -1,5 +1,7 @@
 {
+  "name": "fronted-04",
   "version": "0.0.1",
+  "private": true,
   "scripts": {
     "prepush": "node ./script/version.js",
     "lint": "node -v"
@@ -7,7 +9,7 @@
   "devDependencies": {
     "chalk": "^4.1.1",
     "consola": "^2.15.3",
-    "husky": "4.3.0",
+    "husky": "^4.3.0",
     "inquirer": "^8.1.1",
     "ora": "^5.4.1"
   },
