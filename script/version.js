@@ -9,59 +9,58 @@ const regVersion = /^\d+\.\d+\.\d+$/;
 const regLineBreak = /\s/;
 const getGitBranch = execSync('git name-rev --name-only HEAD', { encoding: 'utf-8' }).replace(regLineBreak, '');
 const releaseBranch = ['dev'] // 可以更新版本号的分支
+const canIRelease = releaseBranch.includes(getGitBranch)
 
-if (!releaseBranch.includes(getGitBranch)) {
+if (!canIRelease) {
   consola.warn(`[notice!] Only the ${releaseBranch.join('/')} branch can update the version`)
-  stepForLint().then(() => {
+}
+
+inquirer.prompt([
+  {
+    type: 'confirm',
+    name: 'isRelease',
+    message: `${getGitBranch} - Do you need to release a version(${chalk.yellow('current version: ' + currentVersion)}):`,
+    default: false,
+    when() {
+      return canIRelease
+    }
+  },
+  {
+    type: 'input',
+    name: 'releaseVersion',
+    message: `please input next release version(${chalk.yellow('current version: ' + currentVersion)}):`,
+    when (question) {
+      return question.isRelease
+    },
+    validate (version) {
+      if (!regVersion.test(version)) {
+        console.log(chalk.red(`\n [error!] The format of the version ${version} is incorrect, Please enter a format such as 0.0.1`))
+        return false
+      } else if (!isToBeGreaterThan(version, currentVersion)) {
+        console.log(chalk.red(`\n [error!] The release version need to be greater than current version(${currentVersion})`))
+        return false
+      }
+      return true
+    }
+  }
+]).then(async (answers) => {
+  const { isRelease, releaseVersion } = answers
+  try {
+    await stepForLint()
+
+    if (!isRelease) {
+      process.exit(0)
+    }
+
+    await stepForUpdateVersion(releaseVersion)
+    await stepForChoreCommit(releaseVersion)
     process.exit(0)
-  }).catch((error) => {
+  } catch (error) {
     console.log(chalk.red(error) + '\n')
     process.exit(1)
-  })
-} else {
-  inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'isRelease',
-      message: `${getGitBranch} - Do you need to release a version(${chalk.yellow('current version: ' + currentVersion)}):`,
-      default: false
-    },
-    {
-      type: 'input',
-      name: 'releaseVersion',
-      message: `please input next release version(${chalk.yellow('current version: ' + currentVersion)}):`,
-      when (question) {
-        return question.isRelease
-      },
-      validate (version) {
-        if (!regVersion.test(version)) {
-          console.log(chalk.red(`\n [error!] The format of the version ${version} is incorrect, Please enter a format such as 0.0.1`))
-          return false
-        } else if (!isToBeGreaterThan(version, currentVersion)) {
-          console.log(chalk.red(`\n [error!] The release version need to be greater than current version(${currentVersion})`))
-          return false
-        }
-        return true
-      }
-    }
-  ]).then(async (answers) => {
-    const { isRelease, releaseVersion } = answers
-    try {
-      await stepForLint()
-  
-      if (!isRelease) {
-        process.exit(0)
-      }
-  
-      await stepForUpdateVersion(releaseVersion)
-      await stepForChoreCommit(releaseVersion)
-      process.exit(0)
-    } catch (error) {
-      console.log(chalk.red(error) + '\n')
-      process.exit(1)
-    }
-  })
-}
+  }
+})
+
 
 
 // lint
