@@ -1,9 +1,9 @@
 {
   "name": "fronted-04",
-  "version": "0.0.3",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
-    "prepush": "node ./script/version.js",
+    "pre:push": "node ./script/version.js",
     "lint": "node -v"
   },
   "devDependencies": {
@@ -15,7 +15,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-push": "yarn prepush"
+      "pre-push": "yarn pre:push"
     }
   }
 }
