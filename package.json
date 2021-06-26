@@ -1,6 +1,6 @@
 {
   "name": "fronted-04",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "scripts": {
     "pre:push": "node ./script/version.js",
