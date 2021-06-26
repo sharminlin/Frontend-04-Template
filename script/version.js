@@ -8,7 +8,7 @@ const { name: projectName, version: currentVersion } = require('../package');
 const regVersion = /^\d+\.\d+\.\d+$/;
 const regLineBreak = /\s/;
 const getGitBranch = execSync('git name-rev --name-only HEAD', { encoding: 'utf-8' }).replace(regLineBreak, '');
-const releaseBranch = ['dev'] // 可以更新版本号的分支
+const releaseBranch = ['master'] // 可以更新版本号的分支
 const canIRelease = releaseBranch.includes(getGitBranch)
 
 if (!canIRelease) {
